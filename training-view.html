@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visualizar Treinamento</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar"><div class="inner"><div class="brand">Player de Treinamento</div><div><a class="btn outline" href="student-dashboard.html">Voltar</a></div></div></header>
+  <main class="container video-layout">
+    <section class="card">
+      <h2 id="title"></h2>
+      <video id="video" controls width="100%"></video>
+      <p id="description" style="color:var(--color-muted)"></p>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <a class="btn" id="quizBtn">Fazer quiz</a>
+        <a class="btn outline" href="certificates.html">Meus certificados</a>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h3>Comentários</h3>
+      <form id="commentForm" class="grid">
+        <textarea id="commentText" placeholder="Escreva uma dúvida ou comentário"></textarea>
+        <button class="btn" type="submit">Publicar com timestamp</button>
+      </form>
+      <div class="comment-list" id="comments"></div>
+    </aside>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const user = auth.requireAuth('student');
+    const params = new URLSearchParams(location.search);
+    const id = Number(params.get('id'));
+    const training = api.getTrainings().find(t => t.id === id);
+    const progress = api.getUserProgress(user.id).find(p => p.trainingId === id);
+
+    document.getElementById('title').textContent = training?.title || 'Treinamento não encontrado';
+    document.getElementById('description').textContent = training?.description || '';
+    document.getElementById('video').src = training?.videoUrl || '';
+    document.getElementById('quizBtn').href = `quiz.html?id=${id}`;
+
+    const video = document.getElementById('video');
+
+    video.addEventListener('loadedmetadata', () => {
+      if (progress?.currentTime) video.currentTime = progress.currentTime;
+    });
+
+    video.addEventListener('timeupdate', () => {
+      const watchedPercent = video.duration ? (video.currentTime / video.duration) * 100 : 0;
+      api.upsertProgress(user.id, id, watchedPercent, video.currentTime);
+    });
+
+    function displayComments() {
+      const comments = api.getComments(id);
+      document.getElementById('comments').innerHTML = comments.map(c => `
+        <article class="card" style="padding:0.6rem;">
+          <strong>${c.author}</strong>
+          <small style="color:var(--color-muted);"> ${new Date(c.createdAt).toLocaleString()} | ${Math.floor(c.timecode)}s</small>
+          <p>${c.text}</p>
+        </article>
+      `).join('') || '<p>Sem comentários ainda.</p>';
+    }
+
+    document.getElementById('commentForm').onsubmit = e => {
+      e.preventDefault();
+      const text = document.getElementById('commentText').value.trim();
+      if (!text) return;
+      api.addComment(user.id, id, text, video.currentTime || 0);
+      document.getElementById('commentText').value = '';
+      displayComments();
+    };
+
+    displayComments();
+  </script>
+</body>
+</html>

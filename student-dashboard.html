@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Funcionário</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+  <header class="topbar"><div class="inner"><div class="brand"><i class="fa-solid fa-graduation-cap"></i> Dashboard Funcionário</div><div><span id="notifBadge" class="badge">0</span> <button class="btn outline" onclick="auth.logout()">Sair</button></div></div></header>
+  <main class="container">
+    <section class="grid grid-4" id="stats"></section>
+
+    <section class="card" style="margin-top:1rem;">
+      <div class="toolbar">
+        <input id="search" placeholder="Buscar treinamento..." />
+        <select id="depFilter"></select>
+        <select id="statusFilter">
+          <option value="">Todos status</option>
+          <option value="completed">Concluído</option>
+          <option value="in_progress">Em andamento</option>
+          <option value="not_started">Não iniciado</option>
+        </select>
+      </div>
+      <div class="grid grid-3" id="trainingsList"></div>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const user = auth.requireAuth('student');
+    const progressMap = new Map(api.getUserProgress(user.id).map(p => [p.trainingId, p]));
+
+    function buildStats() {
+      const trainings = api.getTrainings();
+      const progress = api.getUserProgress(user.id);
+      const completed = progress.filter(p => p.watchedPercent >= 100).length;
+      const inProgress = progress.filter(p => p.watchedPercent > 0 && p.watchedPercent < 100).length;
+      const certs = api.getCertificates(user.id).length;
+
+      document.getElementById('stats').innerHTML = [
+        ['Treinamentos', trainings.length],
+        ['Concluídos', completed],
+        ['Em andamento', inProgress],
+        ['Certificados', certs]
+      ].map(([t, v]) => `<article class="card stat-card"><h3>${v}</h3><p>${t}</p></article>`).join('');
+    }
+
+    function loadFilters() {
+      const deps = api.getDepartments();
+      document.getElementById('depFilter').innerHTML = `<option value="">Todos departamentos</option>${deps.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}`;
+    }
+
+    function createTrainingCard(training) {
+      const p = progressMap.get(training.id);
+      const percent = Math.round(p?.watchedPercent || 0);
+      return `
+        <article class="card training-card">
+          <h4>${training.title}</h4>
+          <p style="color:var(--color-muted);">${training.description}</p>
+          <div class="progress"><span style="width:${percent}%"></span></div>
+          <small>${percent}% concluído</small>
+          <div style="margin-top:0.7rem;display:flex;gap:0.5rem;">
+            <a class="btn" href="training-view.html?id=${training.id}">Assistir</a>
+            <a class="btn outline" href="quiz.html?id=${training.id}">Quiz</a>
+          </div>
+        </article>`;
+    }
+
+    function filterTrainingsList() {
+      const search = document.getElementById('search').value;
+      const departmentId = document.getElementById('depFilter').value;
+      const status = document.getElementById('statusFilter').value;
+
+      let trainings = api.getTrainings({ search, departmentId });
+      if (status) {
+        trainings = trainings.filter(t => {
+          const perc = progressMap.get(t.id)?.watchedPercent || 0;
+          if (status === 'completed') return perc >= 100;
+          if (status === 'in_progress') return perc > 0 && perc < 100;
+          return perc === 0;
+        });
+      }
+
+      document.getElementById('trainingsList').innerHTML = trainings.map(createTrainingCard).join('') || '<p>Nenhum treinamento encontrado.</p>';
+    }
+
+    function loadNotifications() {
+      const unread = api.getNotifications(user.id).filter(n => !n.read).length;
+      document.getElementById('notifBadge').textContent = unread;
+    }
+
+    ['search', 'depFilter', 'statusFilter'].forEach(id => {
+      document.getElementById(id).addEventListener('input', filterTrainingsList);
+      document.getElementById(id).addEventListener('change', filterTrainingsList);
+    });
+
+    buildStats();
+    loadFilters();
+    loadNotifications();
+    filterTrainingsList();
+  </script>
+</body>
+</html>
