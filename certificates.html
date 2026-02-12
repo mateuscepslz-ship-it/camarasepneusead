@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Certificados</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar"><div class="inner"><div class="brand">Meus Certificados</div><a class="btn outline" href="student-dashboard.html">Voltar</a></div></header>
+  <main class="container">
+    <section class="grid grid-3" id="stats"></section>
+    <section class="grid grid-3" id="list" style="margin-top:1rem;"></section>
+    <section id="viewer" class="card" style="margin-top:1rem;display:none;"></section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const user = auth.requireAuth('student');
+
+    function displayStats(certs) {
+      const thisMonth = certs.filter(c => new Date(c.issuedAt).getMonth() === new Date().getMonth()).length;
+      document.getElementById('stats').innerHTML = [
+        ['Certificados emitidos', certs.length],
+        ['Emitidos no mês', thisMonth],
+        ['Taxa de aprovação', certs.length ? '100%' : '0%']
+      ].map(([title, value]) => `<article class="card stat-card"><h3>${value}</h3><p>${title}</p></article>`).join('');
+    }
+
+    function viewCertificate(id) {
+      const cert = api.getCertificates(user.id).find(c => c.id === id);
+      const el = document.getElementById('viewer');
+      el.style.display = 'block';
+      el.innerHTML = `
+        <div class="certificate">
+          <h2>CERTIFICADO DE CONCLUSÃO</h2>
+          <p>Certificamos que</p>
+          <h3>${cert.user.name}</h3>
+          <p>concluiu com sucesso o treinamento</p>
+          <h3>${cert.training.title}</h3>
+          <p>Data: ${new Date(cert.issuedAt).toLocaleDateString('pt-BR')}</p>
+          <p>Código de verificação: <strong>${cert.verificationCode}</strong></p>
+        </div>
+        <div style="margin-top:0.6rem;"><button class="btn" onclick="window.print()">Imprimir / Download</button></div>
+      `;
+    }
+
+    function createCertificateCard(cert) {
+      return `<article class="card"><h4>${cert.training.title}</h4><p>${new Date(cert.issuedAt).toLocaleDateString('pt-BR')}</p><small>${cert.verificationCode}</small><div style="margin-top:0.6rem;"><button class="btn" onclick="viewCertificate(${cert.id})">Visualizar</button></div></article>`;
+    }
+
+    const certs = api.getCertificates(user.id);
+    displayStats(certs);
+    document.getElementById('list').innerHTML = certs.map(createCertificateCard).join('') || '<p>Nenhum certificado gerado ainda.</p>';
+    window.viewCertificate = viewCertificate;
+  </script>
+</body>
+</html>

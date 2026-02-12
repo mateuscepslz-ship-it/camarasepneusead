@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Supervisor</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar"><div class="inner"><div class="brand">Dashboard Supervisor</div><div><button class="btn" onclick="document.getElementById('newTraining').scrollIntoView({behavior:'smooth'})">Adicionar treinamento</button> <button class="btn outline" onclick="auth.logout()">Sair</button></div></div></header>
+  <main class="container">
+    <section class="grid grid-4" id="stats"></section>
+
+    <section class="grid grid-2" style="margin-top:1rem;">
+      <article class="card"><h3>Progresso por departamento</h3><canvas id="depChart"></canvas></article>
+      <article class="card"><h3>Certificados por mês</h3><canvas id="certChart"></canvas></article>
+    </section>
+
+    <section class="card" id="newTraining" style="margin-top:1rem;">
+      <h3>Novo treinamento</h3>
+      <form id="trainingForm" class="grid grid-2">
+        <input id="title" placeholder="Título" required />
+        <input id="videoUrl" placeholder="URL do vídeo" required />
+        <input id="duration" type="number" placeholder="Duração (min)" required />
+        <select id="department" required></select>
+        <textarea id="description" placeholder="Descrição" style="grid-column:1/-1"></textarea>
+        <button class="btn" type="submit">Salvar treinamento</button>
+      </form>
+      <div id="message"></div>
+    </section>
+
+    <section class="card" style="margin-top:1rem;">
+      <h3>Progresso dos funcionários</h3>
+      <table class="table">
+        <thead><tr><th>Funcionário</th><th>Departamento</th><th>Treinamentos</th><th>Certificados</th></tr></thead>
+        <tbody id="usersTable"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    auth.requireAuth('supervisor');
+
+    function loadStats() {
+      const stats = api.getSupervisorStats();
+      document.getElementById('stats').innerHTML = [
+        ['Usuários', stats.totalUsers],
+        ['Treinamentos', stats.totalTrainings],
+        ['Certificados', stats.totalCertificates],
+        ['Taxa de conclusão', `${stats.completionRate}%`]
+      ].map(([title, value]) => `<article class="card stat-card"><h3>${value}</h3><p>${title}</p></article>`).join('');
+
+      new Chart(document.getElementById('depChart'), {
+        type: 'bar',
+        data: {
+          labels: stats.byDepartment.map(i => i.name),
+          datasets: [{ label: 'Usuários', data: stats.byDepartment.map(i => i.users), backgroundColor: '#d90429' }]
+        }
+      });
+
+      new Chart(document.getElementById('certChart'), {
+        type: 'line',
+        data: {
+          labels: stats.certificatesByMonth.map(i => i.month),
+          datasets: [{ label: 'Certificados', data: stats.certificatesByMonth.map(i => i.count), borderColor: '#d90429' }]
+        }
+      });
+    }
+
+    function loadDepartments() {
+      const select = document.getElementById('department');
+      select.innerHTML = api.getDepartments().map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    }
+
+    function loadUsersTable() {
+      const users = api.getUsers().filter(u => u.role === 'student');
+      const deps = new Map(api.getDepartments().map(d => [d.id, d.name]));
+      document.getElementById('usersTable').innerHTML = users.map(u => {
+        const trainings = api.getUserProgress(u.id).length;
+        const certs = api.getCertificates(u.id).length;
+        return `<tr><td>${u.name}</td><td>${deps.get(u.departmentId) || '-'}</td><td>${trainings}</td><td>${certs}</td></tr>`;
+      }).join('') || '<tr><td colspan="4">Sem dados.</td></tr>';
+    }
+
+    document.getElementById('trainingForm').onsubmit = e => {
+      e.preventDefault();
+      const supervisor = auth.getSession();
+      api.createTraining({
+        title: document.getElementById('title').value,
+        videoUrl: document.getElementById('videoUrl').value,
+        durationMinutes: document.getElementById('duration').value,
+        departmentId: document.getElementById('department').value,
+        description: document.getElementById('description').value
+      }, supervisor.id);
+
+      showMessage(document.getElementById('message'), 'Treinamento cadastrado com sucesso!');
+      e.target.reset();
+      loadUsersTable();
+    };
+
+    loadDepartments();
+    loadStats();
+    loadUsersTable();
+  </script>
+</body>
+</html>

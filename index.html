@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Câmaras e Pneus EAD | Login</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="card auth-card">
+      <div class="brand"><i class="fa-solid fa-circle-play"></i> Câmaras e Pneus EAD</div>
+      <h2>Bem-vindo à plataforma</h2>
+      <p style="color: var(--color-muted);">Acesse sua conta ou crie um novo cadastro.</p>
+
+      <div class="tabs">
+        <button id="tabLogin" class="active">Login</button>
+        <button id="tabRegister">Registrar</button>
+      </div>
+
+      <form id="loginForm">
+        <div class="grid">
+          <input type="email" id="loginEmail" placeholder="Email" required />
+          <input type="password" id="loginPassword" placeholder="Senha" required />
+          <label><input type="checkbox" id="remember" /> Lembrar de mim</label>
+          <button class="btn" type="submit">Entrar</button>
+        </div>
+      </form>
+
+      <form id="registerForm" class="form-hidden">
+        <div class="grid">
+          <input type="text" id="regName" placeholder="Nome completo" required />
+          <input type="email" id="regEmail" placeholder="Email" required />
+          <input type="password" id="regPassword" placeholder="Senha" required />
+          <select id="regDepartment"></select>
+          <button class="btn" type="submit">Criar conta</button>
+        </div>
+      </form>
+
+      <div id="message"></div>
+      <small style="display:block;margin-top:1rem;color:var(--color-muted);">Supervisor padrão: admin@camarasepeneus.com.br / admin123</small>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const tabLogin = document.getElementById('tabLogin');
+    const tabRegister = document.getElementById('tabRegister');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const msg = document.getElementById('message');
+
+    function loadDepartments() {
+      const select = document.getElementById('regDepartment');
+      select.innerHTML = api.getDepartments().map(dep => `<option value="${dep.id}">${dep.name}</option>`).join('');
+    }
+
+    tabLogin.onclick = () => {
+      tabLogin.classList.add('active');
+      tabRegister.classList.remove('active');
+      loginForm.classList.remove('form-hidden');
+      registerForm.classList.add('form-hidden');
+    };
+
+    tabRegister.onclick = () => {
+      tabRegister.classList.add('active');
+      tabLogin.classList.remove('active');
+      registerForm.classList.remove('form-hidden');
+      loginForm.classList.add('form-hidden');
+    };
+
+    loginForm.onsubmit = e => {
+      e.preventDefault();
+      try {
+        const user = auth.login(
+          document.getElementById('loginEmail').value,
+          document.getElementById('loginPassword').value,
+          document.getElementById('remember').checked
+        );
+        showMessage(msg, 'Login realizado com sucesso!');
+        window.location.href = user.role === 'supervisor' ? 'supervisor-dashboard.html' : 'student-dashboard.html';
+      } catch (error) {
+        showMessage(msg, error.message, true);
+      }
+    };
+
+    registerForm.onsubmit = e => {
+      e.preventDefault();
+      try {
+        auth.register({
+          name: document.getElementById('regName').value,
+          email: document.getElementById('regEmail').value,
+          password: document.getElementById('regPassword').value,
+          departmentId: document.getElementById('regDepartment').value,
+          role: 'student'
+        });
+        showMessage(msg, 'Cadastro realizado! Faça login.');
+        tabLogin.click();
+      } catch (error) {
+        showMessage(msg, error.message, true);
+      }
+    };
+
+    loadDepartments();
+  </script>
+</body>
+</html>
