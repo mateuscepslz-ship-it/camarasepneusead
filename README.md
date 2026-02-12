@@ -58,9 +58,32 @@ A plataforma usa localStorage para execução instantânea front-end, com modelo
 
 ## Como executar
 
+### Opção rápida
+
 1. Abra `index.html` no navegador.
 2. Faça login com o supervisor padrão ou registre um funcionário.
 3. Navegue pelos fluxos de treinamento, quiz e certificado.
+
+### Como executar a partir do Git
+
+```bash
+git clone <URL_DO_REPOSITORIO>
+cd camarasepneusead
+```
+
+Inicie um servidor HTTP local (recomendado para evitar restrições do `file://`):
+
+```bash
+python3 -m http.server 3000
+```
+
+Depois abra no navegador:
+
+```text
+http://localhost:3000/index.html
+```
+
+> Observação: os dados da plataforma são persistidos no `localStorage` do navegador.
 
 ## Tecnologias
 

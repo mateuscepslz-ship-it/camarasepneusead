@@ -6,6 +6,24 @@
 2. Abra `index.html` no navegador.
 3. O banco simulado é iniciado automaticamente em `localStorage`.
 
+### Executando a partir do Git
+
+```bash
+git clone <URL_DO_REPOSITORIO>
+cd camarasepneusead
+python3 -m http.server 3000
+```
+
+Acesse:
+
+```text
+http://localhost:3000/index.html
+```
+
+Credenciais padrão do supervisor:
+- Email: `admin@camarasepeneus.com.br`
+- Senha: `admin123`
+
 ## 2) Personalização de identidade visual
 
 Edite `css/style.css` no bloco `:root`:
