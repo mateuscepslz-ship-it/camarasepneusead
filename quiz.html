@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar"><div class="inner"><div class="brand">Avaliação de Treinamento</div><a class="btn outline" href="student-dashboard.html">Voltar</a></div></header>
+  <main class="container">
+    <section class="card">
+      <div id="progressText"></div>
+      <div class="progress" style="margin:0.7rem 0;"><span id="bar" style="width:0%"></span></div>
+      <h3 id="question"></h3>
+      <div id="options" class="grid"></div>
+      <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+        <button class="btn outline" id="prevBtn">Anterior</button>
+        <button class="btn" id="nextBtn">Próxima</button>
+        <button class="btn" id="submitBtn" style="display:none;">Finalizar</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const user = auth.requireAuth('student');
+    const id = Number(new URLSearchParams(location.search).get('id'));
+    const questions = api.getOrCreateQuiz(id);
+    let index = 0;
+    const answers = Array(questions.length).fill(null);
+
+    function displayQuestion() {
+      const q = questions[index];
+      document.getElementById('question').textContent = q.question;
+      document.getElementById('progressText').textContent = `Questão ${index + 1} de ${questions.length}`;
+      document.getElementById('bar').style.width = `${((index + 1) / questions.length) * 100}%`;
+      document.getElementById('options').innerHTML = q.options.map((option, i) => `
+        <label class="card" style="padding:0.7rem;cursor:pointer;">
+          <input type="radio" name="answer" value="${i}" ${answers[index] === i ? 'checked' : ''} /> ${option}
+        </label>
+      `).join('');
+
+      document.querySelectorAll('input[name="answer"]').forEach(el => {
+        el.addEventListener('change', e => answers[index] = Number(e.target.value));
+      });
+
+      document.getElementById('prevBtn').style.visibility = index === 0 ? 'hidden' : 'visible';
+      document.getElementById('nextBtn').style.display = index === questions.length - 1 ? 'none' : 'inline-block';
+      document.getElementById('submitBtn').style.display = index === questions.length - 1 ? 'inline-block' : 'none';
+    }
+
+    function submitQuiz() {
+      if (answers.some(a => a === null)) {
+        alert('Responda todas as questões antes de finalizar.');
+        return;
+      }
+      const correct = questions.filter((q, i) => q.answer === answers[i]).length;
+      const score = Math.round((correct / questions.length) * 100);
+      api.submitQuiz(user.id, id, score);
+      alert(score >= 70 ? `Aprovado! Nota: ${score}` : `Reprovado. Nota: ${score}`);
+      location.href = score >= 70 ? 'certificates.html' : `training-view.html?id=${id}`;
+    }
+
+    document.getElementById('nextBtn').onclick = () => { index++; displayQuestion(); };
+    document.getElementById('prevBtn').onclick = () => { index--; displayQuestion(); };
+    document.getElementById('submitBtn').onclick = submitQuiz;
+
+    displayQuestion();
+  </script>
+</body>
+</html>
